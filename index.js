@@ -46,6 +46,10 @@ io.on('connection', socket => {
         }
     })
 
+    socket.on('message', ({name, message})=> {
+        io.emit('message', {name, message})
+    })
+
     socket.on('disconnect', function() {
       console.log('Got disconnect!');
       const j = allClientIds.indexOf(socket.id);
@@ -64,9 +68,6 @@ io.on('connection', socket => {
     })
 })
 
-app.get('/server', function(req, res){
-    res.render('serverPage', {players});
-})
 
 server.listen(4000, function(){
     console.log('listening on port 4000')
@@ -127,8 +128,10 @@ function startGame(w=true){
     setPositions();
     warderTurn = w;
     console.log(`warder will start next round: ${warderTurn}`)
+    console.log(players);
     io.emit('initializeRole', players); 
     io.emit('newGrid', newGrid);
+    io.emit('startRound');
 }
 
 function move(direction, id, socket){
