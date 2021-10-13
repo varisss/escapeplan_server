@@ -20,6 +20,8 @@ let allClientIds = [];
 
 let players = [];
 
+let currentRound = 1;
+
 
 io.on('connection', socket => {
     // allClientIds.push(socket.id);
@@ -60,6 +62,10 @@ io.on('connection', socket => {
     socket.on('move', (direction)=> {
         move(direction, socket.id, socket);
     })
+})
+
+app.get('/server', function(req, res){
+    res.render('serverPage', {players});
 })
 
 server.listen(4000, function(){
@@ -114,13 +120,13 @@ function setPositions(){
     }
 }
 
-function startGame(){
+function startGame(w=true){
     const newGrid = randomGrid(gridArray);
     gridArray = newGrid;
     setRoles();
     setPositions();
-    // console.log(players);
-    warderTurn = true;
+    warderTurn = w;
+    console.log(`warder will start next round: ${warderTurn}`)
     io.emit('initializeRole', players); 
     io.emit('newGrid', newGrid);
 }
@@ -154,7 +160,8 @@ function move(direction, id, socket){
     //check if new pos is within the grid  
     if(new_x>=0 && new_x<=4 && new_y>=0 && new_y<=4){
         if(currentPlayer.role === 'warder' && warderTurn){
-            if (gridArray[new_x][new_y] === 4){  
+            if (gridArray[new_x][new_y] === 4){ 
+                toggleTurn(); 
                 warderWins();
             } else if(gridArray[new_x][new_y]===0){ //if new position is a freeblock
                 gridArray[currentPlayer.pos_x][currentPlayer.pos_y]=0;
@@ -166,8 +173,10 @@ function move(direction, id, socket){
             }
         } else if(currentPlayer.role === 'prisoner' && !warderTurn){
             if (gridArray[new_x][new_y] === 2){  
+                toggleTurn();
                 prisonerWins();
             } else if (gridArray[new_x][new_y] === 3){
+                toggleTurn();
                 warderWins();
             } else if (gridArray[new_x][new_y] === 0){
                 gridArray[currentPlayer.pos_x][currentPlayer.pos_y]=0;
@@ -187,12 +196,24 @@ function move(direction, id, socket){
 
 function warderWins(){
     //warder score + 1
-    console.log('warderWins')
+    players.find(player => player.role === 'warder').score += 1;
+    io.sockets.emit('warderWins', players);
+    console.log('warderWins');
+    startNewRound(players.find(player => player.role === 'warder').id);
 }
 
 function prisonerWins(){
-    //warder score -1 
-    console.log('prisoner wins')
+    //prisoner score +1
+    players.find(player => player.role === 'prisoner').score += 1;
+    io.sockets.emit('prisonerWins', players);
+    console.log('prisoner wins');
+    startNewRound(players.find(player => player.role === 'prisoner').id);
+}
+
+function startNewRound(startingId){
+    const isWarderStart = players.find(player => player.id === startingId).role === 'warder';
+    console.log(`warder starts first: ${isWarderStart}`);
+    startGame(isWarderStart);
 }
 
 function toggleTurn(){
