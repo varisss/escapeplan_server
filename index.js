@@ -15,13 +15,10 @@ let gridArray = [
 ]
 
 let warderTurn = true;
-
 let allClientIds = [];
-
 let players = [];
-
-let currentRound = 1;
-
+let gameRunning = false;
+let startingId;
 
 io.on('connection', socket => {
     // allClientIds.push(socket.id);
@@ -34,7 +31,8 @@ io.on('connection', socket => {
                 role: '',
                 pos_x: 0,
                 pos_y: 0,
-                score: 0
+                score: 0,
+                ready: true
             }
         players.push(player);
         console.log(players);
@@ -48,6 +46,13 @@ io.on('connection', socket => {
 
     socket.on('message', ({name, message})=> {
         io.emit('message', {name, message})
+    })
+
+    socket.on('startNewRound', ()=> {
+        players.find(player=> player.id===socket.id).ready=true
+        if(players[0].ready && players[1].ready){
+            startNewRound();
+        }
     })
 
     socket.on('disconnect', function() {
@@ -129,12 +134,30 @@ function startGame(w=true){
     warderTurn = w;
     console.log(`warder will start next round: ${warderTurn}`)
     console.log(players);
+    gameRunning = true;
     io.emit('initializeRole', players); 
     io.emit('newGrid', newGrid);
     io.emit('startRound');
 }
 
+function startNewRound(){
+    const isWarderStart = players.find(player => player.id === startingId).role === 'warder';
+    console.log(`warder starts first: ${isWarderStart}`);
+    startGame(isWarderStart);
+}
+
+function toggleTurn(){
+    warderTurn = !warderTurn;
+    console.log('toggleTurn');
+    console.log(`warderTurn: ${warderTurn}`);
+    //notify both clients that the new round starts. will have to send warderTurn
+    console.log('restartTimer');
+}
+
 function move(direction, id, socket){
+    if(!gameRunning){
+        return;
+    }
     const currentPlayer = players.find(player => player.id === id);
     if (!((currentPlayer.role==='warder'&& warderTurn)||(currentPlayer.role==='prisoner'&&!warderTurn))){
         return;
@@ -202,7 +225,10 @@ function warderWins(){
     players.find(player => player.role === 'warder').score += 1;
     io.sockets.emit('warderWins', players);
     console.log('warderWins');
-    startNewRound(players.find(player => player.role === 'warder').id);
+    gameRunning = false;
+    players[0].ready = false;
+    players[1].ready = false;
+    startingId = players.find(player => player.role === 'warder').id
 }
 
 function prisonerWins(){
@@ -210,19 +236,9 @@ function prisonerWins(){
     players.find(player => player.role === 'prisoner').score += 1;
     io.sockets.emit('prisonerWins', players);
     console.log('prisoner wins');
-    startNewRound(players.find(player => player.role === 'prisoner').id);
+    gameRunning = false;
+    players[0].ready = false;
+    players[1].ready = false;
+    startingId = players.find(player => player.role === 'prisoner').id;
 }
 
-function startNewRound(startingId){
-    const isWarderStart = players.find(player => player.id === startingId).role === 'warder';
-    console.log(`warder starts first: ${isWarderStart}`);
-    startGame(isWarderStart);
-}
-
-function toggleTurn(){
-    warderTurn = !warderTurn;
-    console.log('toggleTurn');
-    console.log(`warderTurn: ${warderTurn}`);
-    //notify both clients that the new round starts. will have to send warderTurn
-    console.log('restartTimer');
-}
