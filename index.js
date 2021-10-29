@@ -35,6 +35,11 @@ io.on("connection", (socket) => {
 
   socket.on("joinGame", (nickname) => {
     // console.log(io.engine.clientsCount);
+    if (inGameIds.length === 2) {
+      console.log("full");
+      io.to(socket.id).emit("gameFull");
+      return;
+    }
     let player = {
       name: nickname,
       id: socket.id,
@@ -83,6 +88,7 @@ io.on("connection", (socket) => {
   socket.on("leaveGame", () => {
     console.log("A player left");
     const j = inGameIds.indexOf(socket.id);
+    if (j === -1) return;
     inGameIds.splice(j, 1);
     console.log(inGameIds.length);
     console.log(inGameIds);
@@ -270,13 +276,14 @@ function prisonerWins() {
   startingId = players.find((player) => player.role === "prisoner").id;
 }
 
-// app.get("/", (req, res) =>
-//   res.send(
-//     `Number of connected clients: ${connectedCount}
-//     Number of in game clients: ${inGameIds.length}`
-//   )
-// );
-
 app.get("/", (req, res) =>
   res.send({ connected: connectedCount, inGame: inGameIds.length })
 );
+
+app.get("/resetScores", (req, res) => {
+  console.log("reset clicked");
+  for (let i in players) {
+    players[i].score = 0;
+  }
+  io.emit("setScores", players);
+});
