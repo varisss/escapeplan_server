@@ -1,5 +1,13 @@
+var cors = require("cors");
 const app = require("express")();
 const server = require("http").createServer(app);
+
+app.use(cors());
+
+server.listen(5000, function () {
+  console.log("listening on port 5000");
+});
+
 const io = require("socket.io")(server, {
   cors: {
     origin: "*",
@@ -15,13 +23,15 @@ let gridArray = [
 ];
 
 let warderTurn = true;
-let allClientIds = [];
+let connectedCount = 0;
+let inGameIds = [];
 let players = [];
 let gameRunning = false;
 let startingId;
 
 io.on("connection", (socket) => {
-  // allClientIds.push(socket.id);
+  // inGameIds.push(socket.id);
+  connectedCount = socket.client.conn.server.clientsCount;
 
   socket.on("joinGame", (nickname) => {
     // console.log(io.engine.clientsCount);
@@ -36,10 +46,10 @@ io.on("connection", (socket) => {
     };
     players.push(player);
     console.log(players);
-    allClientIds.push(socket.id);
-    console.log(`number of clients ready: ${allClientIds.length}`);
-    if (allClientIds.length === 2) {
-      console.log(allClientIds);
+    inGameIds.push(socket.id);
+    console.log(`number of clients ready: ${inGameIds.length}`);
+    if (inGameIds.length === 2) {
+      console.log(inGameIds);
       startGame();
     }
   });
@@ -57,11 +67,25 @@ io.on("connection", (socket) => {
   });
 
   socket.on("disconnect", function () {
+    connectedCount = socket.client.conn.server.clientsCount;
     console.log("Got disconnect!");
-    const j = allClientIds.indexOf(socket.id);
-    allClientIds.splice(j, 1);
-    console.log(allClientIds.length);
-    console.log(allClientIds);
+    const j = inGameIds.indexOf(socket.id);
+    inGameIds.splice(j, 1);
+    console.log(inGameIds.length);
+    console.log(inGameIds);
+    for (let i in players) {
+      if (players[i].id === socket.id) {
+        players.splice(i, 1);
+      }
+    }
+  });
+
+  socket.on("leaveGame", () => {
+    console.log("A player left");
+    const j = inGameIds.indexOf(socket.id);
+    inGameIds.splice(j, 1);
+    console.log(inGameIds.length);
+    console.log(inGameIds);
     for (let i in players) {
       if (players[i].id === socket.id) {
         players.splice(i, 1);
@@ -72,10 +96,6 @@ io.on("connection", (socket) => {
   socket.on("move", (direction) => {
     move(direction, socket.id, socket);
   });
-});
-
-server.listen(4000, function () {
-  console.log("listening on port 4000");
 });
 
 function randomGrid(gridArray) {
@@ -249,3 +269,14 @@ function prisonerWins() {
   players[1].ready = false;
   startingId = players.find((player) => player.role === "prisoner").id;
 }
+
+// app.get("/", (req, res) =>
+//   res.send(
+//     `Number of connected clients: ${connectedCount}
+//     Number of in game clients: ${inGameIds.length}`
+//   )
+// );
+
+app.get("/", (req, res) =>
+  res.send({ connected: connectedCount, inGame: inGameIds.length })
+);
