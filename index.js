@@ -65,9 +65,11 @@ io.on("connection", (socket) => {
   });
 
   socket.on("startNewRound", () => {
-    players.find((player) => player.id === socket.id).ready = true;
-    if (players[0].ready && players[1].ready) {
-      startNewRound();
+    if (players.length !== 0) {
+      players.find((player) => player.id === socket.id).ready = true;
+      if (players[0].ready && players[1].ready) {
+        startNewRound();
+      }
     }
   });
 
@@ -75,6 +77,7 @@ io.on("connection", (socket) => {
     connectedCount = socket.client.conn.server.clientsCount;
     console.log("Got disconnect!");
     const j = inGameIds.indexOf(socket.id);
+    if (j === -1) return;
     inGameIds.splice(j, 1);
     console.log(inGameIds.length);
     console.log(inGameIds);
@@ -83,6 +86,8 @@ io.on("connection", (socket) => {
         players.splice(i, 1);
       }
     }
+    players.length !== 0 && io.to(players[0].id).emit("opponentLeft");
+    resetScores();
   });
 
   socket.on("leaveGame", () => {
@@ -97,10 +102,16 @@ io.on("connection", (socket) => {
         players.splice(i, 1);
       }
     }
+    players.length !== 0 && io.to(players[0].id).emit("opponentLeft");
+    resetScores();
   });
 
   socket.on("move", (direction) => {
     move(direction, socket.id, socket);
+  });
+
+  socket.on("surrender", () => {
+    surrender(socket.id);
   });
 });
 
@@ -276,14 +287,35 @@ function prisonerWins() {
   startingId = players.find((player) => player.role === "prisoner").id;
 }
 
-app.get("/", (req, res) =>
-  res.send({ connected: connectedCount, inGame: inGameIds.length })
-);
+function surrender(id) {
+  if (!gameRunning) {
+    return;
+  }
+  const currentPlayer = players.find((player) => player.id === id);
+  if (currentPlayer.role === "warder") {
+    toggleTurn();
+    prisonerWins();
+    return;
+  } else if (currentPlayer.role === "prisoner") {
+    toggleTurn();
+    warderWins();
+    return;
+  }
+}
 
-app.get("/resetScores", (req, res) => {
-  console.log("reset clicked");
+const resetScores = () => {
+  console.log("reset");
   for (let i in players) {
     players[i].score = 0;
   }
   io.emit("setScores", players);
+};
+
+app.get("/", (req, res) =>
+  res.send({ connected: connectedCount, inGame: inGameIds.length })
+);
+
+app.get("/api/resetScores", (req, res) => {
+  console.log("reset clicked");
+  resetScores();
 });

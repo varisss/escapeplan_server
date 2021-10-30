@@ -6,7 +6,7 @@ function App() {
   const [connected, setConnected] = useState("");
   const [inGame, setInGame] = useState("");
   const resetScores = async () => {
-    await axios.get("http://localhost:5000/resetScores");
+    await axios.get("http://localhost:5000/api/resetScores");
     return;
   };
   const fetchData = async () => {
