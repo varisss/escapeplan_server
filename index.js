@@ -113,6 +113,10 @@ io.on("connection", (socket) => {
   socket.on("surrender", () => {
     surrender(socket.id);
   });
+
+  socket.on("emoji", (emoji) => {
+    displayEmoji(socket.id, emoji);
+  });
 });
 
 function randomGrid(gridArray) {
@@ -303,19 +307,32 @@ function surrender(id) {
   }
 }
 
+const displayEmoji = (id, emoji) => {
+  const receiverId = players.find((player) => player.id !== id).id;
+  io.to(receiverId).emit("receiveEmoji", emoji);
+};
+
 const resetScores = () => {
-  console.log("reset");
   for (let i in players) {
     players[i].score = 0;
   }
   io.emit("setScores", players);
 };
 
+const resetGame = () => {
+  io.emit("resetGame");
+};
+
 app.get("/", (req, res) =>
   res.send({ connected: connectedCount, inGame: inGameIds.length })
 );
 
-app.get("/api/resetScores", (req, res) => {
-  console.log("reset clicked");
-  resetScores();
+// app.get("/api/resetScores", (req, res) => {
+//   console.log("reset score clicked");
+//   resetScores();
+// });
+
+app.get("/api/resetGame", (req, res) => {
+  console.log("reset game clicked");
+  resetGame();
 });
