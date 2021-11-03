@@ -28,12 +28,23 @@ let inGameIds = [];
 let players = [];
 let gameRunning = false;
 let startingId;
+let maxRounds = null;
+let round;
 
 io.on("connection", (socket) => {
   // inGameIds.push(socket.id);
   connectedCount = socket.client.conn.server.clientsCount;
 
-  socket.on("joinGame", (nickname) => {
+  socket.on("joinLobby", () => {
+    if (maxRounds !== null) {
+      io.to(socket.id).emit("roundsSet", maxRounds);
+      return;
+    }
+    io.to(socket.id).emit("roundsNotSet");
+    return;
+  });
+
+  socket.on("joinGame", (nickname, r) => {
     // console.log(io.engine.clientsCount);
     if (inGameIds.length === 2) {
       console.log("full");
@@ -53,6 +64,11 @@ io.on("connection", (socket) => {
     console.log(players);
     inGameIds.push(socket.id);
     console.log(`number of clients ready: ${inGameIds.length}`);
+    if (inGameIds.length === 1) {
+      round = 1;
+      maxRounds = r;
+      console.log(maxRounds);
+    }
     if (inGameIds.length === 2) {
       console.log(inGameIds);
       startGame();
@@ -87,6 +103,8 @@ io.on("connection", (socket) => {
       }
     }
     players.length !== 0 && io.to(players[0].id).emit("opponentLeft");
+    round = 1;
+    if (players.length === 0) maxRounds = null;
     resetScores();
   });
 
@@ -103,6 +121,8 @@ io.on("connection", (socket) => {
       }
     }
     players.length !== 0 && io.to(players[0].id).emit("opponentLeft");
+    round = 1;
+    if (players.length === 0) maxRounds = null;
     resetScores();
   });
 
@@ -278,6 +298,11 @@ function warderWins() {
   players[0].ready = false;
   players[1].ready = false;
   startingId = players.find((player) => player.role === "warder").id;
+  round++;
+  if (round > maxRounds) {
+    console.log("game over");
+    io.emit("gameOver");
+  }
 }
 
 function prisonerWins() {
@@ -289,6 +314,11 @@ function prisonerWins() {
   players[0].ready = false;
   players[1].ready = false;
   startingId = players.find((player) => player.role === "prisoner").id;
+  round++;
+  if (round > maxRounds) {
+    console.log("game over");
+    io.emit("gameOver");
+  }
 }
 
 function surrender(id) {
