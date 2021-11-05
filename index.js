@@ -106,6 +106,7 @@ io.on("connection", (socket) => {
     round = 1;
     if (players.length === 0) maxRounds = null;
     resetScores();
+    stopTimer();
   });
 
   socket.on("leaveGame", () => {
@@ -124,6 +125,7 @@ io.on("connection", (socket) => {
     round = 1;
     if (players.length === 0) maxRounds = null;
     resetScores();
+    stopTimer();
   });
 
   socket.on("move", (direction) => {
@@ -200,6 +202,7 @@ function startGame(w = true) {
   io.emit("initializeRole", players);
   io.emit("newGrid", newGrid, warderTurn);
   io.emit("startRound");
+  startTimer();
 }
 
 function startNewRound() {
@@ -209,12 +212,33 @@ function startNewRound() {
   startGame(isWarderStart);
 }
 
+let interval;
+
 function toggleTurn() {
+  stopTimer();
   warderTurn = !warderTurn;
   console.log("toggleTurn");
   console.log(`warderTurn: ${warderTurn}`);
   //notify both clients that the new round starts. will have to send warderTurn
+  startTimer();
   console.log("restartTimer");
+}
+
+function startTimer() {
+  let timer = 9;
+  interval = setInterval(() => {
+    io.emit("timer", timer);
+    if (timer === 0) {
+      console.log("timer reached 0");
+      toggleTurn();
+      io.sockets.emit("newGrid", gridArray, warderTurn);
+    }
+    timer--;
+  }, 1000);
+}
+
+function stopTimer() {
+  clearInterval(interval);
 }
 
 function move(direction, id, socket) {
