@@ -365,4 +365,5 @@ app.get("/", (req, res) =>
 app.get("/api/resetGame", (req, res) => {
   console.log("reset game clicked");
   resetGame();
+  res.send({ connected: connectedCount, inGame: inGameIds.length });
 });
