@@ -198,7 +198,7 @@ function startGame(w = true) {
   console.log(players);
   gameRunning = true;
   io.emit("initializeRole", players);
-  io.emit("newGrid", newGrid);
+  io.emit("newGrid", newGrid, warderTurn);
   io.emit("startRound");
 }
 
@@ -263,8 +263,8 @@ function move(direction, id, socket) {
         gridArray[new_x][new_y] = 3;
         players.find((player) => player.id === id).pos_x = new_x;
         players.find((player) => player.id === id).pos_y = new_y;
-        io.sockets.emit("newGrid", gridArray);
         toggleTurn();
+        io.sockets.emit("newGrid", gridArray, warderTurn);
       }
     } else if (currentPlayer.role === "prisoner" && !warderTurn) {
       if (gridArray[new_x][new_y] === 2) {
@@ -278,9 +278,8 @@ function move(direction, id, socket) {
         gridArray[new_x][new_y] = 4;
         players.find((player) => player.id === id).pos_x = new_x;
         players.find((player) => player.id === id).pos_y = new_y;
-        io.sockets.emit("newGrid", gridArray);
-        // socket.emit("newGrid", gridArray);
         toggleTurn();
+        io.sockets.emit("newGrid", gridArray, warderTurn);
       }
     } else {
       console.log("invalid role");

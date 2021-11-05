@@ -11,7 +11,7 @@ function App() {
   //   return;
   // };
   const resetGame = async () => {
-    console.log('reset pressed');
+    console.log("reset pressed");
     const a = await axios.get("http://localhost:5000/api/resetGame");
     setConnected(a.data.connected);
     setInGame(a.data.inGame);
@@ -21,14 +21,16 @@ function App() {
     const a = await axios("http://localhost:5000/");
     setConnected(a.data.connected);
     setInGame(a.data.inGame);
-
   };
+
   useEffect(() => {
     fetchData();
   }, []);
+
   setInterval(() => {
     fetchData();
   }, 1000);
+
   return (
     <div className='container'>
       <h1 className='game-title'>ESCAPE PLAN</h1>
@@ -43,8 +45,13 @@ function App() {
         </div>
       </div>
 
-      <Button onClick={() => resetGame()} style={{fontSize:'36px'}} className='button'>Reset Game</Button>
- 
+      <Button
+        onClick={() => resetGame()}
+        style={{ fontSize: "36px" }}
+        className='button'
+      >
+        Reset Game
+      </Button>
     </div>
   );
 }
