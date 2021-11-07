@@ -191,6 +191,7 @@ function setPositions() {
 }
 
 function startGame(w = true) {
+  io.emit("timer", 10);
   const newGrid = randomGrid(gridArray);
   gridArray = newGrid;
   setRoles();
@@ -279,9 +280,11 @@ function move(direction, id, socket) {
   if (new_x >= 0 && new_x <= 4 && new_y >= 0 && new_y <= 4) {
     if (currentPlayer.role === "warder" && warderTurn) {
       if (gridArray[new_x][new_y] === 4) {
+        io.emit("timer", 10);
         toggleTurn();
         warderWins();
       } else if (gridArray[new_x][new_y] === 0) {
+        io.emit("timer", 10);
         //if new position is a freeblock
         gridArray[currentPlayer.pos_x][currentPlayer.pos_y] = 0;
         gridArray[new_x][new_y] = 3;
@@ -291,6 +294,7 @@ function move(direction, id, socket) {
         io.sockets.emit("newGrid", gridArray, warderTurn);
       }
     } else if (currentPlayer.role === "prisoner" && !warderTurn) {
+      io.emit("timer", 10);
       if (gridArray[new_x][new_y] === 2) {
         toggleTurn();
         prisonerWins();
@@ -313,6 +317,8 @@ function move(direction, id, socket) {
 }
 
 function warderWins() {
+  stopTimer();
+  io.emit("clearTimer");
   //warder score + 1
   players.find((player) => player.role === "warder").score += 1;
   io.sockets.emit("warderWins", players);
@@ -329,6 +335,8 @@ function warderWins() {
 }
 
 function prisonerWins() {
+  stopTimer();
+  io.emit("clearTimer");
   //prisoner score +1
   players.find((player) => player.role === "prisoner").score += 1;
   io.sockets.emit("prisonerWins", players);
