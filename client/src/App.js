@@ -12,13 +12,13 @@ function App() {
   // };
   const resetGame = async () => {
     console.log("reset pressed");
-    const a = await axios.get("http://localhost:5000/api/resetGame");
+    const a = await axios.get("https://netcentric-escapeplan-server.herokuapp.com/api/resetGame");
     setConnected(a.data.connected);
     setInGame(a.data.inGame);
   };
 
   const fetchData = async () => {
-    const a = await axios("http://localhost:5000/");
+    const a = await axios("https://netcentric-escapeplan-server.herokuapp.com/");
     setConnected(a.data.connected);
     setInGame(a.data.inGame);
   };
