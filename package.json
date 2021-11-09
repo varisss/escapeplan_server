@@ -6,9 +6,7 @@
   "scripts": {
     "start": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "server": "npx nodemon index",
-    "client": "npm start --prefix client",
-    "dev": "concurrently \"npm run server\" \"npm run client\""
+    "server": "npx nodemon index"
   },
   "author": "",
   "license": "ISC",
