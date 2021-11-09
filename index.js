@@ -4,7 +4,8 @@ const server = require("http").createServer(app);
 
 app.use(cors());
 
-server.listen(5000, function () {
+const port = process.env.PORT || 5000
+server.listen(port, function () {
   console.log("listening on port 5000");
 });
 
