@@ -6,7 +6,7 @@ app.use(cors());
 
 const port = process.env.PORT || 5000
 server.listen(port, function () {
-  console.log("listening on port 5000");
+  console.log(`listening on port ${port}`);
 });
 
 const io = require("socket.io")(server, {
