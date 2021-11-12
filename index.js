@@ -4,7 +4,7 @@ const server = require("http").createServer(app);
 
 app.use(cors());
 
-const port = process.env.PORT || 5000
+const port = process.env.PORT || 5000;
 server.listen(port, function () {
   console.log(`listening on port ${port}`);
 });
@@ -32,10 +32,10 @@ let startingId;
 let maxRounds = null;
 let round;
 
-try{
+try {
   io.on("connection", (socket) => {
     connectedCount = socket.client.conn.server.clientsCount;
-  
+
     socket.on("joinLobby", () => {
       if (maxRounds !== null) {
         io.to(socket.id).emit("roundsSet", maxRounds);
@@ -44,8 +44,8 @@ try{
       io.to(socket.id).emit("roundsNotSet");
       return;
     });
-  
-    socket.on("joinGame", (nickname, r) => {
+
+    socket.on("joinGame", (nickname, rounds) => {
       if (inGameIds.length === 2) {
         //game full
         io.to(socket.id).emit("gameFull");
@@ -64,17 +64,13 @@ try{
       inGameIds.push(socket.id);
       if (inGameIds.length === 1) {
         round = 1;
-        maxRounds = r;
+        maxRounds = rounds;
       }
       if (inGameIds.length === 2) {
         startGame();
       }
     });
-  
-    socket.on("message", ({ name, message, id }) => {
-      io.emit("message", { name, message, id });
-    });
-  
+
     socket.on("startNewRound", () => {
       if (players.length !== 0) {
         players.find((player) => player.id === socket.id).ready = true;
@@ -83,24 +79,23 @@ try{
         }
       }
     });
-  
-    socket.on("disconnect", function () {
-      connectedCount = socket.client.conn.server.clientsCount;
-      const j = inGameIds.indexOf(socket.id);
-      if (j === -1) return;
-      inGameIds.splice(j, 1);
-      for (let i in players) {
-        if (players[i].id === socket.id) {
-          players.splice(i, 1);
-        }
-      }
-      players.length !== 0 && io.to(players[0].id).emit("opponentLeft");
-      round = 1;
-      if (players.length === 0) maxRounds = null;
-      resetScores();
-      stopTimer();
+
+    socket.on("move", (direction) => {
+      move(direction, socket.id, socket);
     });
-  
+
+    socket.on("surrender", () => {
+      surrender(socket.id);
+    });
+
+    socket.on("message", ({ name, message, id }) => {
+      io.emit("message", { name, message, id });
+    });
+
+    socket.on("emoji", (emoji) => {
+      displayEmoji(socket.id, emoji);
+    });
+
     socket.on("leaveGame", () => {
       //a player left
       const j = inGameIds.indexOf(socket.id);
@@ -117,45 +112,50 @@ try{
       resetScores();
       stopTimer();
     });
-  
-    socket.on("move", (direction) => {
-      move(direction, socket.id, socket);
-    });
-  
-    socket.on("surrender", () => {
-      surrender(socket.id);
-    });
-  
-    socket.on("emoji", (emoji) => {
-      displayEmoji(socket.id, emoji);
+
+    socket.on("disconnect", function () {
+      connectedCount = socket.client.conn.server.clientsCount;
+      const j = inGameIds.indexOf(socket.id);
+      if (j === -1) return;
+      inGameIds.splice(j, 1);
+      for (let i in players) {
+        if (players[i].id === socket.id) {
+          players.splice(i, 1);
+        }
+      }
+      players.length !== 0 && io.to(players[0].id).emit("opponentLeft");
+      round = 1;
+      if (players.length === 0) maxRounds = null;
+      resetScores();
+      stopTimer();
     });
   });
-  
-  function randomGrid(gridArray) {
+
+  const randomGrid = (gridArray) => {
     const array = [].concat(...gridArray);
     let currentIndex = array.length,
       randomIndex;
-  
+
     // While there remain elements to shuffle...
     while (currentIndex != 0) {
       // Pick a remaining element...
       randomIndex = Math.floor(Math.random() * currentIndex);
       currentIndex--;
-  
+
       // And swap it with the current element.
       [array[currentIndex], array[randomIndex]] = [
         array[randomIndex],
         array[currentIndex],
       ];
     }
-  
+
     let newGridArray = [];
     while (array.length) newGridArray.push(array.splice(0, 5));
-  
+
     return newGridArray;
-  }
-  
-  function setRoles() {
+  };
+
+  const setRoles = () => {
     if (Math.random < 0.5) {
       players[0].role = "warder";
       players[1].role = "prisoner";
@@ -163,9 +163,9 @@ try{
       players[0].role = "prisoner";
       players[1].role = "warder";
     }
-  }
-  
-  function setPositions() {
+  };
+
+  const setPositions = () => {
     for (let i = 0; i < 5; i++) {
       for (let j = 0; j < 5; j++) {
         if (gridArray[i][j] === 3) {
@@ -178,38 +178,37 @@ try{
         }
       }
     }
-  }
-  
-  function startGame(w = true) {
+  };
+
+  const startGame = (isWarderStart = true) => {
     io.emit("timer", 10);
     const newGrid = randomGrid(gridArray);
     gridArray = newGrid;
     setRoles();
     setPositions();
-    warderTurn = w;
+    warderTurn = isWarderStart;
     gameRunning = true;
     io.emit("initializeRole", players);
     io.emit("newGrid", newGrid, warderTurn);
     io.emit("startRound");
     startTimer();
-  }
-  
-  function startNewRound() {
+  };
+
+  const startNewRound = () => {
     const isWarderStart =
       players.find((player) => player.id === startingId).role === "warder";
     startGame(isWarderStart);
-  }
-  
-  let interval;
-  
-  function toggleTurn() {
+  };
+
+  const toggleTurn = () => {
     stopTimer();
     warderTurn = !warderTurn;
     //notify both clients that the new round starts. will have to send warderTurn
     startTimer();
-  }
-  
-  function startTimer() {
+  };
+
+  let interval;
+  const startTimer = () => {
     let timer = 9;
     interval = setInterval(() => {
       io.emit("timer", timer);
@@ -220,17 +219,18 @@ try{
       }
       timer--;
     }, 1000);
-  }
-  
-  function stopTimer() {
+  };
+
+  const stopTimer = () => {
     clearInterval(interval);
-  }
-  
-  function move(direction, id, socket) {
+  };
+
+  const move = (direction, id, socket) => {
     if (!gameRunning) {
       return;
     }
     const currentPlayer = players.find((player) => player.id === id);
+
     if (
       !(
         (currentPlayer.role === "warder" && warderTurn) ||
@@ -239,6 +239,7 @@ try{
     ) {
       return;
     }
+
     let new_x = currentPlayer.pos_x;
     let new_y = currentPlayer.pos_y;
     switch (direction) {
@@ -257,6 +258,7 @@ try{
       default:
         return;
     }
+
     //check if new pos is within the grid
     if (new_x >= 0 && new_x <= 4 && new_y >= 0 && new_y <= 4) {
       if (currentPlayer.role === "warder" && warderTurn) {
@@ -295,9 +297,9 @@ try{
         return;
       }
     }
-  }
-  
-  function warderWins() {
+  };
+
+  const warderWins = () => {
     stopTimer();
     io.emit("clearTimer");
     //warder score + 1
@@ -312,9 +314,9 @@ try{
       //game over
       io.emit("gameOver");
     }
-  }
-  
-  function prisonerWins() {
+  };
+
+  const prisonerWins = () => {
     stopTimer();
     io.emit("clearTimer");
     //prisoner score +1
@@ -329,9 +331,9 @@ try{
       //game over
       io.emit("gameOver");
     }
-  }
-  
-  function surrender(id) {
+  };
+
+  const surrender = (id) => {
     if (!gameRunning) {
       return;
     }
@@ -345,34 +347,32 @@ try{
       warderWins();
       return;
     }
-  }
-  
+  };
+
   const displayEmoji = (id, emoji) => {
     const receiverId = players.find((player) => player.id !== id).id;
     io.to(receiverId).emit("receiveEmoji", emoji);
   };
-  
+
   const resetScores = () => {
     for (let i in players) {
       players[i].score = 0;
     }
     io.emit("setScores", players);
   };
-  
+
   const resetGame = () => {
     io.emit("resetGame");
   };
-  
+
   app.get("/", (req, res) =>
     res.send({ connected: connectedCount, inGame: inGameIds.length })
   );
-  
+
   app.get("/api/resetGame", (req, res) => {
     resetGame();
     res.send({ connected: connectedCount, inGame: inGameIds.length });
   });
-  
-} catch(e){  
-  console.log(e)
+} catch (e) {
+  console.log(e);
 }
-
