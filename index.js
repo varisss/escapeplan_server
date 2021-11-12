@@ -34,7 +34,6 @@ let round;
 
 try{
   io.on("connection", (socket) => {
-    // inGameIds.push(socket.id);
     connectedCount = socket.client.conn.server.clientsCount;
   
     socket.on("joinLobby", () => {
@@ -47,9 +46,8 @@ try{
     });
   
     socket.on("joinGame", (nickname, r) => {
-      // console.log(io.engine.clientsCount);
       if (inGameIds.length === 2) {
-        console.log("full");
+        //game full
         io.to(socket.id).emit("gameFull");
         return;
       }
@@ -63,22 +61,17 @@ try{
         ready: true,
       };
       players.push(player);
-      console.log(players);
       inGameIds.push(socket.id);
-      console.log(`number of clients ready: ${inGameIds.length}`);
       if (inGameIds.length === 1) {
         round = 1;
         maxRounds = r;
-        console.log(maxRounds);
       }
       if (inGameIds.length === 2) {
-        console.log(inGameIds);
         startGame();
       }
     });
   
     socket.on("message", ({ name, message, id }) => {
-      console.log(id);
       io.emit("message", { name, message, id });
     });
   
@@ -93,12 +86,9 @@ try{
   
     socket.on("disconnect", function () {
       connectedCount = socket.client.conn.server.clientsCount;
-      console.log("Got disconnect!");
       const j = inGameIds.indexOf(socket.id);
       if (j === -1) return;
       inGameIds.splice(j, 1);
-      console.log(inGameIds.length);
-      console.log(inGameIds);
       for (let i in players) {
         if (players[i].id === socket.id) {
           players.splice(i, 1);
@@ -112,12 +102,10 @@ try{
     });
   
     socket.on("leaveGame", () => {
-      console.log("A player left");
+      //a player left
       const j = inGameIds.indexOf(socket.id);
       if (j === -1) return;
       inGameIds.splice(j, 1);
-      console.log(inGameIds.length);
-      console.log(inGameIds);
       for (let i in players) {
         if (players[i].id === socket.id) {
           players.splice(i, 1);
@@ -199,8 +187,6 @@ try{
     setRoles();
     setPositions();
     warderTurn = w;
-    console.log(`warder will start next round: ${warderTurn}`);
-    console.log(players);
     gameRunning = true;
     io.emit("initializeRole", players);
     io.emit("newGrid", newGrid, warderTurn);
@@ -211,7 +197,6 @@ try{
   function startNewRound() {
     const isWarderStart =
       players.find((player) => player.id === startingId).role === "warder";
-    console.log(`warder starts first: ${isWarderStart}`);
     startGame(isWarderStart);
   }
   
@@ -220,11 +205,8 @@ try{
   function toggleTurn() {
     stopTimer();
     warderTurn = !warderTurn;
-    console.log("toggleTurn");
-    console.log(`warderTurn: ${warderTurn}`);
     //notify both clients that the new round starts. will have to send warderTurn
     startTimer();
-    console.log("restartTimer");
   }
   
   function startTimer() {
@@ -232,7 +214,7 @@ try{
     interval = setInterval(() => {
       io.emit("timer", timer);
       if (timer === 0) {
-        console.log("timer reached 0");
+        //when timer reached 0, toggle turn
         toggleTurn();
         io.sockets.emit("newGrid", gridArray, warderTurn);
       }
@@ -257,11 +239,8 @@ try{
     ) {
       return;
     }
-    console.log(currentPlayer);
     let new_x = currentPlayer.pos_x;
     let new_y = currentPlayer.pos_y;
-    console.log(`current pos_x:${new_x}`);
-    console.log(`current pos_y:${new_y}`);
     switch (direction) {
       case "left":
         new_y = new_y - 1;
@@ -324,14 +303,13 @@ try{
     //warder score + 1
     players.find((player) => player.role === "warder").score += 1;
     io.sockets.emit("warderWins", players);
-    console.log("warder wins");
     gameRunning = false;
     players[0].ready = false;
     players[1].ready = false;
     startingId = players.find((player) => player.role === "warder").id;
     round++;
     if (round > maxRounds) {
-      console.log("game over");
+      //game over
       io.emit("gameOver");
     }
   }
@@ -342,14 +320,13 @@ try{
     //prisoner score +1
     players.find((player) => player.role === "prisoner").score += 1;
     io.sockets.emit("prisonerWins", players);
-    console.log("prisoner wins");
     gameRunning = false;
     players[0].ready = false;
     players[1].ready = false;
     startingId = players.find((player) => player.role === "prisoner").id;
     round++;
     if (round > maxRounds) {
-      console.log("game over");
+      //game over
       io.emit("gameOver");
     }
   }
@@ -391,7 +368,6 @@ try{
   );
   
   app.get("/api/resetGame", (req, res) => {
-    console.log("reset game clicked");
     resetGame();
     res.send({ connected: connectedCount, inGame: inGameIds.length });
   });
